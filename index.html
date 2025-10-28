@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>College Timetable</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      background: #fafafa;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 0.5em;
+    }
+    .table-container {
+      overflow-x: auto;
+    }
+    table {
+      border: 1px solid #ccc;
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 900px;
+    }
+    caption {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 10px;
+      text-align: center;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #333;
+      color: white;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    tr.today {
+      background: #fff7d6;
+    }
+    th.active, td.active {
+      background: gold;
+      color: black;
+      font-weight: bold;
+    }
+    #class-info {
+      margin-top: 1em;
+      font-size: 1.2em;
+      text-align: center;
+    }
+    #controls {
+      text-align: center;
+      margin-top: 1em;
+    }
+    button {
+      padding: 6px 12px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>B.SC — Semester Timetable</h1>
+  <div class="table-container">
+    <table aria-label="College Weekly Timetable">
+      <caption>Weekly Schedule</caption>
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th><time datetime="10:00">10:00</time> - <time datetime="10:45">10:45</time></th>
+          <th><time datetime="10:45">10:45</time> - <time datetime="11:30">11:30</time></th>
+          <th><time datetime="11:45">11:45</time> - <time datetime="12:30">12:30</time></th>
+          <th><time datetime="12:30">12:30</time> - <time datetime="13:15">1:15</time></th>
+          <th><time datetime="13:15">13:15</time> - <time datetime="14:00">2:00</time></th>
+          <th><time datetime="14:00">14:00</time> - <time datetime="14:45">2:45</time></th>
+          <th><time datetime="14:45">14:45</time> - <time datetime="15:30">3:30</time></th>
+          <th><time datetime="15:30">15:30</time> - <time datetime="16:15">4:15</time></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Monday</td><td colspan="3"></td><td></td><td><abbr title="Computer Science Core">CSC</abbr> H3 PKP</td><td>CSC H3 PKP</td><td><abbr title="Mathematics">MAM</abbr> H7</td><td><abbr title="Ethics & Values">ETV</abbr> H3</td></tr>
+        <tr><td>Tuesday</td><td colspan="3"></td><td></td><td>CSC H3 NB</td><td>CSC H3 NB</td><td>MAM(TH) H9</td><td> ETV H3</td></tr>
+        <tr><td>Wednesday</td><td colspan="3">CSC Lab AB</td><td></td><td>CSC H3 AB</td><td>CSC H3 AB</td><td>PHMD H26 AS</td><td></td></tr>
+        <tr><td>Thursday</td><td colspan="3">CSC Lab</td><td></td><td>CSC H3 BD</td><td>CSC H3 NB</td><td>PHMD H26 JM</td><td></td></tr>
+        <tr><td>Friday</td><td></td><td></td><td></td><td></td><td>CSC H3 PKP</td><td>PHMD H26 JM</td><td>MAM H4</td><td>ETV H3</td></tr>
+        <tr><td>Saturday</td><td></td><td></td><td></td><td colspan="3">CSC Lab PKP</td><td>MAM H4</td><td>ETV H3</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p id="class-info"></p>
+
+  <div id="controls">
+    <button onclick="window.print()">Print Timetable</button>
+  </div>
+
+  <script>
+    function highlightCurrentPeriod() {
+      const now = new Date();
+      const currentDay = now.getDay(); // Sunday=0
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      const headers = Array.from(document.querySelectorAll("thead th")).slice(1);
+      const rows = document.querySelectorAll("tbody tr");
+      const info = document.getElementById("class-info");
+
+      // Reset all
+      rows.forEach(r => r.classList.remove("today"));
+      headers.forEach(th => th.classList.remove("active"));
+      rows.forEach(r => Array.from(r.cells).forEach(c => c.classList.remove("active")));
+
+      if (currentDay === 0) { // Sunday
+        info.textContent = "No classes today — it's Sunday 🎉";
+        return;
+      }
+
+      const todayRow = rows[currentDay - 1];
+      todayRow.classList.add("today");
+
+      // Map cells with colspan expansion
+      let colIndex = 1;
+      const cells = [];
+      for (let i = 1; i < todayRow.cells.length; i++) {
+        const cell = todayRow.cells[i];
+        const span = parseInt(cell.getAttribute("colspan") || "1");
+        for (let j = 0; j < span; j++) {
+          cells[colIndex] = cell;
+          colIndex++;
+        }
+      }
+
+      let currentClass = null;
+      let nextClass = null;
+
+      headers.forEach((th, index) => {
+        const times = th.querySelectorAll("time");
+        if (times.length === 2) {
+          const [sh, sm] = times[0].getAttribute("datetime").split(":").map(Number);
+          const [eh, em] = times[1].getAttribute("datetime").split(":").map(Number);
+          const startMinutes = sh * 60 + sm;
+          const endMinutes = eh * 60 + em;
+
+          const cell = cells[index + 1];
+          const subject = cell ? cell.textContent.trim() : "";
+
+          if (subject) {
+            if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+              th.classList.add("active");
+              if (cell) cell.classList.add("active");
+              currentClass = { subject, end: times[1].textContent };
+            }
+            if (startMinutes > currentMinutes && !nextClass) {
+              nextClass = { subject, start: times[0].textContent, startMinutes };
+            }
+          }
+        }
+      });
+
+      // Countdown helper
+      function countdown(toMinutes) {
+        const diff = toMinutes - currentMinutes;
+        if (diff <= 0) return "";
+        const h = Math.floor(diff / 60);
+        const m = diff % 60;
+        if (h > 0) return `in ${h}h ${m}m`;
+        return `in ${m} minutes`;
+      }
+
+      if (currentClass && nextClass) {
+        info.textContent = `Now: ${currentClass.subject} (until ${currentClass.end}). Next: ${nextClass.subject} at ${nextClass.start} (${countdown(nextClass.startMinutes)}).`;
+      } else if (currentClass) {
+        info.textContent = `Now: ${currentClass.subject} (until ${currentClass.end}). No more classes today.`;
+      } else if (nextClass) {
+        info.textContent = `Next: ${nextClass.subject} at ${nextClass.start} (${countdown(nextClass.startMinutes)}).`;
+      } else {
+        info.textContent = "No classes at this time.";
+      }
+    }
+
+    highlightCurrentPeriod();
+    setInterval(highlightCurrentPeriod, 60000);
+  </script>
+</body>
+</html>
